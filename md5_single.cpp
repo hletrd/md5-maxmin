@@ -14,7 +14,7 @@ uint32_t m[16];
 uint32_t len_tmp;
 uint32_t a, b, c, d;
 
-unsigned char input[600];
+unsigned char input[520];
 uint32_t result[4];
 
 #define cs(a,b) (((a)<<(b)) | ((a)>>((32-b))));
