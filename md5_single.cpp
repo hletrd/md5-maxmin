@@ -77,13 +77,12 @@ int main(int argc, char *argv[]) {
 
 //	#pragma omp parallel
 	memcpy(m, input, 64);
+	unsigned char *perm = (unsigned char*) m;
 	while(1) {
 		cnt++;
 		start = clock();
 
 		for (int l = 0; l < num_hashes; l++){
-			memcpy(m, input, len);
-			
 			a = B + cs((A + F(B, C, D) + m[ 0] + 0xd76aa478),  7);
 			d = a + cs((D + F(a, B, C) + m[ 1] + 0xe8c7b756), 12);
 			c = d + cs((C + F(d, a, B) + m[ 2] + 0x242070db), 17);
@@ -158,12 +157,12 @@ int main(int argc, char *argv[]) {
 			result[3] = bswap(d+D);
 
 			if (Mr[0] <= result[0] && (Mr[0] < result[0] || (Mr[0] == result[0] && Mr[1] < result[1]) || (Mr[0] == result[0] && Mr[1] == result[1] && Mr[2] < result[2]) /*|| (Mr[0] == result[0] && Mr[1] == result[1] && Mr[2] == result[2] && Mr[3] < result[3])*/)) {
-				memcpy(Ms, input, len);
+				memcpy(Ms, m, len);
 				memcpy(Mr, result, 16);
 				fprintf(OUT, "0||%08x%08x%08x%08x||%s-HLETRD||\n", Mr[0], Mr[1], Mr[2], Mr[3], Ms);
 				fflush(OUT);
 			} else if (mr[0] >= result[0] && (mr[0] > result[0] || (mr[0] == result[0] && mr[1] > result[1]) || (mr[0] == result[0] && mr[1] == result[1] && mr[2] > result[2]) /*|| (mr[0] == result[0] && mr[1] == result[1] && mr[2] == result[2] && mr[3] > result[3])*/)) {
-				memcpy(ms, input, len);
+				memcpy(ms, m, len);
 				memcpy(mr, result, 16);
 				fprintf(OUT, "1||%08x%08x%08x%08x||%s-HLETRD||\n", mr[0], mr[1], mr[2], mr[3], ms);
 				fflush(OUT);
@@ -171,12 +170,12 @@ int main(int argc, char *argv[]) {
 
 			popcnt_tmp = __builtin_popcountll(p[0]) + __builtin_popcountll(p[1]);
 			if (popcnt_tmp > popcntM) {
-				memcpy(pMs, input, len);
+				memcpy(pMs, m, len);
 				popcntM = popcnt_tmp;
 				fprintf(OUT, "2||%08x%08x%08x%08x||%s-HLETRD||%d||\n", result[0], result[1], result[2], result[3], pMs, popcnt_tmp);
 				fflush(OUT);
 			} else if (popcnt_tmp < popcntm) {
-				memcpy(pms, input, len);
+				memcpy(pms, m, len);
 				popcntm = popcnt_tmp;
 				fprintf(OUT, "3||%08x%08x%08x%08x||%s-HLETRD||%d||\n", result[0], result[1], result[2], result[3], pms, popcnt_tmp);
 				fflush(OUT);
@@ -184,7 +183,7 @@ int main(int argc, char *argv[]) {
 
 			popcnt_tmp = __builtin_popcountll(p[0] ^ 0xefcdab8967452301ll) + __builtin_popcountll(p[1] ^ 0x1032547698badcfell);
 			if (popcnt_tmp < basem) {
-				memcpy(bms, input, len);
+				memcpy(bms, m, len);
 				basem = popcnt_tmp;
 				fprintf(OUT, "4||%08x%08x%08x%08x||%s-HLETRD||%u||\n", result[0], result[1], result[2], result[3], bms, basem);
 				fflush(OUT);
@@ -192,17 +191,17 @@ int main(int argc, char *argv[]) {
 
 			t_tmp = (uint32_t)t[0] + t[1] + t[2] + t[3] + t[4] + t[5] + t[6] + t[7] + t[8] + t[9] + t[10] + t[11] + t[12] + t[13] + t[14] + t[15];
 			if (t_tmp > tmax) {
-				memcpy(tMs, input, len);
+				memcpy(tMs, m, len);
 				tmax = t_tmp;
 				fprintf(OUT, "5||%08x%08x%08x%08x||%s-HLETRD||%u||\n", result[0], result[1], result[2], result[3], tMs, tmax);
 				fflush(OUT);
 			} else if (t_tmp < tmin) {
-				memcpy(tms, input, len);
+				memcpy(tms, m, len);
 				tmin = t_tmp;
 				fprintf(OUT, "6||%08x%08x%08x%08x||%s-HLETRD||%u||\n", result[0], result[1], result[2], result[3], tms, tmin);
 				fflush(OUT);
 			}
-			std::next_permutation(input, input+len);
+			std::next_permutation(perm, perm+len);
 		}
 
 		fprintf(OUT, "9||%.0lf||%.2lf||%lld||\n", (double)num_hashes * 1.0 / (clock() - start) * CLOCKS_PER_SEC, (1.0 * len * num_hashes * 1.0 / (clock() - start) * CLOCKS_PER_SEC), cnt * num_hashes);
