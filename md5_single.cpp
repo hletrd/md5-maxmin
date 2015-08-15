@@ -30,7 +30,7 @@ uint32_t result[4];
 #define C 0x98badcfe
 #define D 0x10325476
 
-//max length: 55 bytes
+//max length supported: 27 bytes
 int main(int argc, char *argv[]) {
 	char *inp = argv[2];
 
