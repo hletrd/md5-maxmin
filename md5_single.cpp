@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 		cnt++;
 		start = clock();
 
-		for (int l = 0; l < num_hashes; l++){
+		for (int l = 0; l < num_hashes; l++) {
 			a = B + cs((A + F(B, C, D) + m[ 0] + 0xd76aa478),  7);
 			d = a + cs((D + F(a, B, C) + m[ 1] + 0xe8c7b756), 12);
 			c = d + cs((C + F(d, a, B) + m[ 2] + 0x242070db), 17);
