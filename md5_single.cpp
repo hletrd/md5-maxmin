@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cstdint>
 
-#define num_hashes 10000000
+#define num_hashes 100000000
 #define len 20
 #define len_postfix 7
 #define OUT stdout
@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
 				fflush(OUT);
 			}
 
-			popcnt_tmp = __builtin_popcountll(p[0] ^ 0xefcdab8967452301ll) + __builtin_popcountll(p[1] ^ 0x1032547698badcfell);
+			popcnt_tmp = __builtin_popcountll(p[0] ^ 0x89abcdef01234567ll) + __builtin_popcountll(p[1] ^ 0x76543210fedcba98ll);
 			if (popcnt_tmp < basem) {
 				memcpy(bms, m, len);
 				basem = popcnt_tmp;

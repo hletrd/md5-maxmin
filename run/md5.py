@@ -15,7 +15,7 @@ bitmin = 128
 basemin = 128
 tmax = 0
 tmin = 0x1000
-nick = "HLETRD(C%2B%2B)%20https://0101010101.com"
+nick = "HLETRD_MP"
 
 class t(threading.Thread):
 	def __init__(self, rank, basestr):
@@ -97,7 +97,7 @@ class t(threading.Thread):
 						res = conn.getresponse()
 				elif self.nextline[0] == '9':
 					global tot
-					tot += 10000000
+					tot += 100000000
 					elapsed = datetime.datetime.now() - tstart
 					speed = tot / (elapsed.seconds + elapsed.microseconds / 1000000.0)
 					print str(tot) + ' hashes processed, ' + str(int(speed/10000)/100.00) + 'M hashes / sec'
