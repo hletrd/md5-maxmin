@@ -105,7 +105,7 @@ class t(threading.Thread):
 			except ValueError:
 				print 'ValueError'
 
-cnt = 16 #int(raw_input("Input number of workers[4]: ") or 4)
+cnt = 80 #int(raw_input("Input number of workers[4]: ") or 4)
 basestr = list("!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~")
 random.shuffle(basestr)
 basestr = ''.join(basestr)
