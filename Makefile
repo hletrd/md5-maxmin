@@ -6,3 +6,4 @@ md5: md5_single.cpp
 
 clean:
 	rm -f run/md5.run
+

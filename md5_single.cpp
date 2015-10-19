@@ -5,17 +5,14 @@
 #include <algorithm>
 #include <cstdint>
 
-#define num_hashes 100000000
+#define num_hashes 10000000
 #define len 20
 #define len_postfix 7
 #define OUT stdout
 
-uint32_t m[16];
 uint32_t len_tmp;
-uint32_t a, b, c, d;
 
 unsigned char input[520];
-uint32_t result[4];
 
 #define cs(a,b) (((a)<<(b)) | ((a)>>((32-b))));
 #define bswap(a) (((a)>>24) | (((a)<<8)&0xff0000) | (((a)>>8)&0xff00) | ((a)<<24));
@@ -32,6 +29,10 @@ uint32_t result[4];
 
 //max length supported: 27 bytes
 int main(int argc, char *argv[]) {
+	register uint32_t m[16];
+	register uint32_t a, b, c, d;
+	register uint32_t result[4];
+
 	char *inp = argv[2];
 
 	for(int i = 0; i < len; i++) {
@@ -49,27 +50,27 @@ int main(int argc, char *argv[]) {
 	time_t tstart = time(NULL);
 	clock_t start;
 
-	uint32_t Mr[4] = {0x80000000,};
-	uint32_t mr[4] = {0x80000000,};
+	register uint32_t Mr[4] = {0x80000000,};
+	register uint32_t mr[4] = {0x80000000,};
 	char Ms[100] = {0,};
 	char ms[100] = {0,};
 
-	uint32_t popcntM = 64;
-	uint32_t popcntm = 64;
+	register uint32_t popcntM = 64;
+	register uint32_t popcntm = 64;
 	char pMs[100] = {0,};
 	char pms[100] = {0,};
-	uint32_t popcnt_tmp;
-	uint64_t *p = (uint64_t*) result;
+	register uint32_t popcnt_tmp;
+	register uint64_t *p = (uint64_t*) result;
 
 	uint32_t basem = 64;
 	char bms[100] = {0,};
 
-	uint32_t t_tmp;
-	uint32_t tmax = 0x800;
-	uint32_t tmin = 0x800;
+	register uint32_t t_tmp;
+	register uint32_t tmax = 0x800;
+	register uint32_t tmin = 0x800;
 	char tMs[100] = {0,};
 	char tms[100] = {0,};
-	unsigned char *t = (unsigned char*) result;
+	register unsigned char *t = (unsigned char*) result;
 
 	len_tmp = (len + len_postfix) * 8;
 	input[len + len_postfix] = 0x80;

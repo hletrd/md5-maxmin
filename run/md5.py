@@ -97,7 +97,7 @@ class t(threading.Thread):
 						res = conn.getresponse()
 				elif self.nextline[0] == '9':
 					global tot
-					tot += 100000000
+					tot += 10000000
 					elapsed = datetime.datetime.now() - tstart
 					speed = tot / (elapsed.seconds + elapsed.microseconds / 1000000.0)
 					print str(tot) + ' hashes processed, ' + str(int(speed/10000)/100.00) + 'M hashes / sec'
@@ -105,7 +105,7 @@ class t(threading.Thread):
 			except ValueError:
 				print 'ValueError'
 
-cnt = 80 #int(raw_input("Input number of workers[4]: ") or 4)
+cnt = 1 #int(raw_input("Input number of workers[4]: ") or 4)
 basestr = list("!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~")
 random.shuffle(basestr)
 basestr = ''.join(basestr)
