@@ -68,6 +68,6 @@ print 'Initializing with ' + str(cnt) + ' workers'
 sys.stdout.flush()
 
 for i in range(0,cnt):
-	T = t(i, basestr)
+	T = t(i, basestr[0:17])
 	T.start()
 	basestr = basestr[1:]
