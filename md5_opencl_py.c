@@ -9,11 +9,10 @@
 #define num_hashes 20000
 #define len_postfix 7
 #define OUT stdout
-#define num_global 8192
+#define num_global 16384
 #define num_local 1
 
 int len, len_tmp;
-unsigned char *input;
 unsigned int result[8];
 int M, m;
 int iter;
@@ -31,6 +30,7 @@ const char *OpenCL_kernel = "\n\
 #define B 0xefcdab89\n\
 #define C 0x98badcfe\n\
 #define D 0x10325476\n\
+#pragma unroll\n\
 \n\
 inline void swap(unsigned char* a, unsigned char* b) {\n\
     unsigned char tmp = *a;\n\
@@ -64,7 +64,7 @@ inline void next_permutation(unsigned char* first, unsigned char* last) {\n\
 		}\n\
 	}\n\
 }\n\
-__kernel void run(__global unsigned int* m_global, __global unsigned int* output, __global unsigned char* original, int length) {\n\
+__kernel void run(__global unsigned int *m_global, __global unsigned int *output, __global unsigned char *original, __global unsigned char *original_bit, __global int *bM, __global int *bm, int length) {\n\
 	unsigned int a, b, c, d;\n\
 	unsigned int result[4];\n\
 	int poptmp;\n\
@@ -75,14 +75,11 @@ __kernel void run(__global unsigned int* m_global, __global unsigned int* output
 		m[i] = m_global[i];\n\
 	}\n\
 	unsigned char *input = (unsigned char*) m;\n\
-	output += get_global_id(0)*8;\n\
+	output += get_global_id(0)*16;\n\
 	original += get_global_id(0)*128;\n\
-	for(int i = 0; i < 4; i++) {\n\
-		output[i] = 0xFFFF0000;\n\
-	}\n\
-	for(int i = 4; i < 8; i++) {\n\
-		output[i] = 0x0000FFFF;\n\
-	}\n\
+	original_bit += get_global_id(0)*128;\n\
+	bM += get_global_id(0);\n\
+	bm += get_global_id(0);\n\
 	for(int i = 0; i < 20000; i++) {\n\
 		a = B + cs((m[ 0] + 0xd76aa477),  7);\n\
 		d = a + cs(((C ^ (a & 0x77777777)) + m[ 1] + 0xf8fa0bcc), 12);\n\
@@ -173,7 +170,26 @@ __kernel void run(__global unsigned int* m_global, __global unsigned int* output
 				original[j+64] = input[j];\n\
 			}\n\
 			\n\
-			poptmp = popcount(result[0]) + popcount(result[1]) + popcount(result[2]) + popcount(result[3]);\n\
+		}\n\
+		poptmp = popcount(result[0]) + popcount(result[1]) + popcount(result[2]) + popcount(result[3]);\n\
+		if (poptmp > *bM) {\n\
+			bM[0] = poptmp;\n\
+			output[8] = result[0];\n\
+			output[9] = result[1];\n\
+			output[10] = result[2];\n\
+			output[11] = result[3];\n\
+			for(int j = 0; j < 32; j++) {\n\
+				original_bit[j] = input[j];\n\
+			}\n\
+		} else if (poptmp < *bm) { \n\
+			bm[0] = poptmp;\n\
+			output[12] = result[0];\n\
+			output[13] = result[1];\n\
+			output[14] = result[2];\n\
+			output[15] = result[3];\n\
+			for(int j = 0; j < 32; j++) {\n\
+				original_bit[j+64] = input[j];\n\
+			}\n\
 		}\n\
 		next_permutation(input, input+length);\n\
 	}\n\
@@ -184,10 +200,15 @@ __kernel void run(__global unsigned int* m_global, __global unsigned int* output
 
 //max length supported: 27 bytes
 int main(int argc, char *argv[]) {
-	input = (unsigned char*)calloc(sizeof(char)*64*num_global*num_local, 1);
+	unsigned char *input = (unsigned char*)calloc(sizeof(char)*64*num_global*num_local, 1);
 	unsigned char *original = (unsigned char*)malloc(sizeof(char)*128*num_global*num_local);
+	unsigned char *original_bit = (unsigned char*)malloc(sizeof(char)*128*num_global*num_local);
+	unsigned int *output = (unsigned int*)malloc(sizeof(int)*16*num_global*num_local);
 	len = strlen(argv[1]) + 3;
 	unsigned char *base = (unsigned char*)"01234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()-=_+[]{};':\",./<>?|\\";
+	int *bM = (int*)malloc(sizeof(int)*num_global*num_local);
+	int *bm = (int*)malloc(sizeof(int)*num_global*num_local);
+	int bM_all = 0, bm_all = 512;
 
 	for(int i = 0; i < 8; i++) {
 		result[i] = 0x7FFFFFFF;
@@ -211,20 +232,27 @@ int main(int argc, char *argv[]) {
 		len_tmp = (len + len_postfix) * 8;
 		input[len + len_postfix + 64*j] = 0x80;
 		memcpy(input+56 + 64*j, &len_tmp, 4);
+		for(int i = 0; i < 4; i++) {
+			output[i + 16*j] = 0xFFFF0000;
+		}
+		for(int i = 4; i < 8; i++) {
+			output[i + 16*j] = 0x0000FFFF;
+		}
+		bM[j] = 0;
+		bm[j] = 512;
 	}
 
 	cl_context context;
 	cl_command_queue commands;
 	cl_program program;
 	cl_kernel kernel;
-	cl_mem input_m, output_m, original_m;
+	cl_mem input_m, output_m, original_m, original_m_bit, bM_m, bm_m;
 	cl_uint nplatforms = 0, ndevices = 0;
 	cl_platform_id *pid;
 	cl_device_id *did;
 	size_t global, local;
 	int pid_in, did_in;
 	int err;
-	unsigned int *output = (unsigned int*)malloc(sizeof(int)*8*num_global*num_local);
 
 	err = clGetPlatformIDs(0, NULL, &nplatforms);
 	if (err != CL_SUCCESS) {
@@ -293,15 +321,24 @@ int main(int argc, char *argv[]) {
 	}
 
 	input_m = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(char)*64*num_global*num_local, NULL, NULL);
-	output_m = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(int)*8*num_global*num_local, NULL, NULL);
+	output_m = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int)*16*num_global*num_local, NULL, NULL);
 	original_m = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(char)*128*num_global*num_local, NULL, NULL);
-	if (!input_m || !output_m || !original_m) {
+	original_m_bit = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(char)*128*num_global*num_local, NULL, NULL);
+	bM_m = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int)*num_global*num_local, NULL, NULL);
+	bm_m = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int)*num_global*num_local, NULL, NULL);
+	if (!input_m || !output_m || !original_m || !original_m_bit || !bM_m || !bm_m) {
 		fprintf(OUT, "Error: Failed to allocate OpenCL device memory: %d\n", err);
 		return EXIT_FAILURE;
 	}
 
+	global = (size_t)num_global;
+	local = (size_t)num_local;
+
 	while(1) {
 		err = clEnqueueWriteBuffer(commands, input_m, CL_TRUE, 0, sizeof(char)*64*num_global*num_local, input, 0, NULL, NULL);
+		err = clEnqueueWriteBuffer(commands, output_m, CL_TRUE, 0, sizeof(int)*16*num_global*num_local, output, 0, NULL, NULL);
+		err = clEnqueueWriteBuffer(commands, bM_m, CL_TRUE, 0, sizeof(int)*num_global*num_local, bM, 0, NULL, NULL);
+		err = clEnqueueWriteBuffer(commands, bm_m, CL_TRUE, 0, sizeof(int)*num_global*num_local, bm, 0, NULL, NULL);
 		if (err != CL_SUCCESS) {
 			fprintf(OUT, "Error: Failed to write to OpenCL source array: %d\n", err);
 			return EXIT_FAILURE;
@@ -310,7 +347,10 @@ int main(int argc, char *argv[]) {
 		err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input_m);
 		err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &output_m);
 		err |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &original_m);
-		err |= clSetKernelArg(kernel, 3, sizeof(int), &len);
+		err |= clSetKernelArg(kernel, 3, sizeof(cl_mem), &original_m_bit);
+		err |= clSetKernelArg(kernel, 4, sizeof(cl_mem), &bM_m);
+		err |= clSetKernelArg(kernel, 5, sizeof(cl_mem), &bm_m);
+		err |= clSetKernelArg(kernel, 6, sizeof(int), &len);
 		if (err != CL_SUCCESS) {
 			fprintf(OUT, "Error: Failed to set OpenCL kernel arguments: %d\n", err);
 			return EXIT_FAILURE;
@@ -320,40 +360,53 @@ int main(int argc, char *argv[]) {
 			fprintf(OUT, "Error: Failed to retrieve OpenCL kernel work group info: %d\n", err);
 			return EXIT_FAILURE;
 		}
-		global = (size_t)num_global;
-		local = (size_t)num_local;
 		err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
 		if (err) {
 			fprintf(OUT, "Error: Failed to execute OpenCL kernel: %d\n", err);
 			return EXIT_FAILURE;
 		}
 		clFinish(commands);
-		err = clEnqueueReadBuffer(commands, output_m, CL_TRUE, 0, sizeof(int)*8*num_global*num_local, output, 0, NULL, NULL);  
 		err |= clEnqueueReadBuffer(commands, input_m, CL_TRUE, 0, sizeof(char)*64*num_global*num_local, input, 0, NULL, NULL);
-		err |= clEnqueueReadBuffer(commands, original_m, CL_TRUE, 0, sizeof(char)*128*num_global*num_local, original, 0, NULL, NULL); 
+		err = clEnqueueReadBuffer(commands, output_m, CL_TRUE, 0, sizeof(int)*16*num_global*num_local, output, 0, NULL, NULL);
+		err |= clEnqueueReadBuffer(commands, original_m, CL_TRUE, 0, sizeof(char)*128*num_global*num_local, original, 0, NULL, NULL);
+		err |= clEnqueueReadBuffer(commands, original_m_bit, CL_TRUE, 0, sizeof(char)*128*num_global*num_local, original_bit, 0, NULL, NULL);
+		err |= clEnqueueReadBuffer(commands, bM_m, CL_TRUE, 0, sizeof(int)*num_global*num_local, bM, 0, NULL, NULL);
+		err |= clEnqueueReadBuffer(commands, bm_m, CL_TRUE, 0, sizeof(int)*num_global*num_local, bm, 0, NULL, NULL);
 		if (err != CL_SUCCESS) {
 			fprintf(OUT, "Error: Failed to read OpenCL output. %d\n", err);
 			exit(1);
 		}
 		fflush(OUT);
 		for(int j = 0; j < num_global * num_local; j++) {
-			if (output[j*8 + 0] > result[0] || (output[j*8 + 0] == result[0] && output[j*8 + 1] > result[1]) || (output[j*8 + 0] == result[0] && output[j*8 + 1] == result[1] && output[j*8 + 2] > result[2])) {
-				result[0] = output[j*8 + 0];
-				result[1] = output[j*8 + 1];
-				result[2] = output[j*8 + 2];
-				result[3] = output[j*8 + 3];
+			if (output[j*16 + 0] > result[0] || (output[j*16 + 0] == result[0] && output[j*16 + 1] > result[1]) || (output[j*16 + 0] == result[0] && output[j*16 + 1] == result[1] && output[j*16 + 2] > result[2])) {
+				result[0] = output[j*16 + 0];
+				result[1] = output[j*16 + 1];
+				result[2] = output[j*16 + 2];
+				result[3] = output[j*16 + 3];
 				original[len+7+j*128] = 0;
 				fprintf(OUT, "0||%08x%08x%08x%08x||%s||\n", result[0], result[1], result[2], result[3], original + 128*j);
 				fflush(OUT);
-			} else if (output[j*8 + 4] < result[4] || (output[j*8 + 4] == result[4] && output[j*8 + 5] < result[5]) || (output[j*8 + 4] == result[4] && output[j*8 + 5] == result[5] && output[j*8 + 6] < result[6])) {
-				result[4] = output[j*8 + 4];
-				result[5] = output[j*8 + 5];
-				result[6] = output[j*8 + 6];
-				result[7] = output[j*8 + 7];
+			} else if (output[j*16 + 4] < result[4] || (output[j*16 + 4] == result[4] && output[j*16 + 5] < result[5]) || (output[j*16 + 4] == result[4] && output[j*16 + 5] == result[5] && output[j*16 + 6] < result[6])) {
+				result[4] = output[j*16 + 4];
+				result[5] = output[j*16 + 5];
+				result[6] = output[j*16 + 6];
+				result[7] = output[j*16 + 7];
 				original[len+7+64+j*128] = 0;
 				fprintf(OUT, "1||%08x%08x%08x%08x||%s||\n", result[4], result[5], result[6], result[7], original + 128*j + 64);
 				fflush(OUT);
 			}
+			if (bM[j] > bM_all) {
+				bM_all = bM[j];
+				original_bit[len+7+j*128] = 0;
+				fprintf(OUT, "2||%08x%08x%08x%08x||%s||%d\n", output[j*16 + 8], output[j*16 + 9], output[j*16 + 10], output[j*16 + 11], original_bit + 128*j, bM_all);
+				fflush(OUT);
+			} else if (bm[j] < bm_all) {
+				bm_all = bm[j];
+				original_bit[len+7+j*128+64] = 0;
+				fprintf(OUT, "3||%08x%08x%08x%08x||%s||%d\n", output[j*16 + 12], output[j*16 + 13], output[j*16 + 14], output[j*16 + 15], original_bit + 128*j + 64, bm_all);
+				fflush(OUT);
+			}
+
 		}
 		fprintf(OUT, "9||\n");
 		fflush(OUT);
@@ -362,6 +415,9 @@ int main(int argc, char *argv[]) {
 	clReleaseMemObject(input_m);
 	clReleaseMemObject(output_m);
 	clReleaseMemObject(original_m);
+	clReleaseMemObject(original_m_bit);
+	clReleaseMemObject(bM_m);
+	clReleaseMemObject(bm_m);
 	clReleaseProgram(program);
 	clReleaseKernel(kernel);
 }

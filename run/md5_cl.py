@@ -10,8 +10,10 @@ import json
 tot = 0
 md5min = 0xffffffffffffffffffffffffffffffff
 md5max = 0
+md5bitmin = 512
+md5bitmax = 0
 nick = "HLETRD_OpenCL"
-chunk = 20000 * 8192
+chunk = 20000 * 16384
 
 class t(threading.Thread):
 	def __init__(self, rank, basestr):
@@ -47,6 +49,24 @@ class t(threading.Thread):
 						conn = httplib.HTTPConnection('0xf.kr')
 						conn.request("GET", "/md5/update.php?c=min&t=" + urllib.quote_plus(self.nextline.split('||')[2]) + "&n=" + nick)
 						res = conn.getresponse()
+				elif self.nextline[0] == '2':
+					global md5bitmax
+					if md5bitmax > int(self.nextline.split('||')[3]):
+						md5bitmax = int(self.nextline.split('||')[3]);
+						print 'Worker #' + self.rank + ' found bitmax: ' + self.nextline.split('||')[1] + ' (' + self.nextline.split('||')[2] + ')'
+						sys.stdout.flush()
+						conn = httplib.HTTPConnection('0xf.kr')
+						conn.request("GET", "/md5/update.php?c=bitmax&t=" + urllib.quote_plus(self.nextline.split('||')[2]) + "&n=" + nick)
+						res = conn.getresponse()
+				elif self.nextline[0] == '3':
+					global md5bitmin
+					if md5bitmin > int(self.nextline.split('||')[3]):
+						md5bitmin = int(self.nextline.split('||')[3]);
+						print 'Worker #' + self.rank + ' found bitmin: ' + self.nextline.split('||')[1] + ' (' + self.nextline.split('||')[2] + ')'
+						sys.stdout.flush()
+						conn = httplib.HTTPConnection('0xf.kr')
+						conn.request("GET", "/md5/update.php?c=bitmin&t=" + urllib.quote_plus(self.nextline.split('||')[2]) + "&n=" + nick)
+						res = conn.getresponse()
 				elif self.nextline[0] == '9':
 					global tot
 					tot += chunk
@@ -58,6 +78,8 @@ class t(threading.Thread):
 				print 'ValueError'
 			except IndexError:
 				pass
+			except:
+				pass
 
 cnt = 2 #int(raw_input("Input number of workers[4]: ") or 4)
 basestr = list("!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~")
@@ -67,7 +89,7 @@ tstart = datetime.datetime.now()
 print 'Initializing with ' + str(cnt) + ' workers'
 sys.stdout.flush()
 
-for i in range(0,cnt):
+for i in range(1,cnt):
 	T = t(i, basestr[0:17])
 	T.start()
 	basestr = basestr[1:]
