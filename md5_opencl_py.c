@@ -6,7 +6,7 @@
 	#include <CL/cl.h>
 #endif
 
-#define num_hashes 20000
+#define num_hashes 62*62*20
 #define len_postfix 7
 #define OUT stdout
 #define num_global 8192
@@ -30,43 +30,11 @@ const char *OpenCL_kernel = "\n\
 #define B 0xefcdab89\n\
 #define C 0x98badcfe\n\
 #define D 0x10325476\n\
-#pragma unroll\n\
 \n\
-inline void swap(unsigned char* a, unsigned char* b) {\n\
-    unsigned char tmp = *a;\n\
-    *a = *b;\n\
-    *b = tmp;\n\
-}\n\
-inline void reverse(unsigned char* first, unsigned char* last) {\n\
-    for (; first != last && first != --last; ++first)\n\
-        swap(first, last);\n\
-}\n\
-inline void next_permutation(unsigned char* first, unsigned char* last) {\n\
-	unsigned char* next = last;\n\
-	--next;\n\
-	if(first == last || first == next) {\n\
-		return;\n\
-	}\n\
-	while(true) {\n\
-		unsigned char* next1 = next;\n\
-		--next;\n\
-		if(*next < *next1) {\n\
-			unsigned char* mid = last;\n\
-			--mid;\n\
-			for(; !(*next < *mid); --mid);\n\
-			swap(next, mid);\n\
-			reverse(next1, last);\n\
-			return;\n\
-		}\n\
-		if(next == first) {\n\
-			reverse(first, last);\n\
-			return;\n\
-		}\n\
-	}\n\
-}\n\
 __kernel void run(__global unsigned int *m_global, __global unsigned int *output, __global unsigned char *original, __global unsigned char *original_bit, __global int *bM, __global int *bm, __global int *tM, __global int *tm, __global int *base, int length) {\n\
 	unsigned int a, b, c, d;\n\
 	unsigned int result[4];\n\
+	unsigned char *basestr = (unsigned char*)\"01234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\";\n\
 	int poptmp;\n\
 	\n\
 	m_global += get_global_id(0)*16;\n\
@@ -84,149 +52,155 @@ __kernel void run(__global unsigned int *m_global, __global unsigned int *output
 	tm += get_global_id(0);\n\
 	base += get_global_id(0);\n\
 	unsigned char *result_b = (unsigned char*) result;\n\
-	for(int i = 0; i < 20000; i++) {\n\
-		a = B + cs((m[ 0] + 0xd76aa477),  7);\n\
-		d = a + cs(((C ^ (a & 0x77777777)) + m[ 1] + 0xf8fa0bcc), 12);\n\
-		c = d + cs((F(d, a, B) + m[ 2] + 0xbcdb4dd9), 17);\n\
-		b = c + cs((F(c, d, a) + m[ 3] + 0xb18b7a77), 22);\n\
-		a = b + cs((a + F(b, c, d) + m[ 4] + 0xf57c0faf),  7);\n\
-		d = a + cs((d + F(a, b, c) + m[ 5] + 0x4787c62a), 12);\n\
-		c = d + cs((c + F(d, a, b) + m[ 6] + 0xa8304613), 17);\n\
-		b = c + cs((b + F(c, d, a) + 0xfd469501), 22);\n\
-		a = b + cs((a + F(b, c, d) + 0x698098d8),  7);\n\
-		d = a + cs((d + F(a, b, c) + 0x8b44f7af), 12);\n\
-		c = d + cs((c + F(d, a, b) + 0xffff5bb1), 17);\n\
-		b = c + cs((b + F(c, d, a) + 0x895cd7be), 22);\n\
-		a = b + cs((a + F(b, c, d) + 0x6b901122),  7);\n\
-		d = a + cs((d + F(a, b, c) + 0xfd987193), 12);\n\
-		c = d + cs((c + F(d, a, b) + m[14] + 0xa679438e), 17);\n\
-		b = c + cs((b + F(c, d, a) + m[15] + 0x49b40821), 22);\n\
-		\n\
-		a = b + cs((a + G(b, c, d) + m[ 1] + 0xf61e2562),  5);\n\
-		d = a + cs((d + G(a, b, c) + m[ 6] + 0xc040b340),  9);\n\
-		c = d + cs((c + G(d, a, b) + 0x265e5a51), 14);\n\
-		b = c + cs((b + G(c, d, a) + m[ 0] + 0xe9b6c7aa), 20);\n\
-		a = b + cs((a + G(b, c, d) + m[ 5] + 0xd62f105d),  5);\n\
-		d = a + cs((d + G(a, b, c) + 0x02441453),  9);\n\
-		c = d + cs((c + G(d, a, b) + m[15] + 0xd8a1e681), 14);\n\
-		b = c + cs((b + G(c, d, a) + m[ 4] + 0xe7d3fbc8), 20);\n\
-		a = b + cs((a + G(b, c, d) + 0x21e1cde6),  5);\n\
-		d = a + cs((d + G(a, b, c) + m[14] + 0xc33707d6),  9);\n\
-		c = d + cs((c + G(d, a, b) + m[ 3] + 0xf4d50d87), 14);\n\
-		b = c + cs((b + G(c, d, a) + 0x455a14ed), 20);\n\
-		a = b + cs((a + G(b, c, d) + 0xa9e3e905),  5);\n\
-		d = a + cs((d + G(a, b, c) + m[ 2] + 0xfcefa3f8),  9);\n\
-		c = d + cs((c + G(d, a, b) + 0x676f02d9), 14);\n\
-		b = c + cs((b + G(c, d, a) + 0x8d2a4c8a), 20);\n\
-		\n\
-		a = b + cs((a + H(b, c, d) + m[ 5] + 0xfffa3942),  4);\n\
-		d = a + cs((d + H(a, b, c) + 0x8771f681), 11);\n\
-		c = d + cs((c + H(d, a, b) + 0x6d9d6122), 16);\n\
-		b = c + cs((b + H(c, d, a) + m[14] + 0xfde5380c), 23);\n\
-		a = b + cs((a + H(b, c, d) + m[ 1] + 0xa4beea44),  4);\n\
-		d = a + cs((d + H(a, b, c) + m[ 4] + 0x4bdecfa9), 11);\n\
-		c = d + cs((c + H(d, a, b) + 0xf6bb4b60), 16);\n\
-		b = c + cs((b + H(c, d, a) + 0xbebfbc70), 23);\n\
-		a = b + cs((a + H(b, c, d) + 0x289b7ec6),  4);\n\
-		d = a + cs((d + H(a, b, c) + m[ 0] + 0xeaa127fa), 11);\n\
-		c = d + cs((c + H(d, a, b) + m[ 3] + 0xd4ef3085), 16);\n\
-		b = c + cs((b + H(c, d, a) + m[ 6] + 0x04881d05), 23);\n\
-		a = b + cs((a + H(b, c, d) + 0xd9d4d039),  4);\n\
-		d = a + cs((d + H(a, b, c) + 0xe6db99e5), 11);\n\
-		c = d + cs((c + H(d, a, b) + m[15] + 0x1fa27cf8), 16);\n\
-		b = c + cs((b + H(c, d, a) + m[ 2] + 0xc4ac5665), 23);\n\
-		\n\
-		a = b + cs((a + I(b, c, d) + m[ 0] + 0xf4292244),  6);\n\
-		d = a + cs((d + I(a, b, c) + 0x432aff97), 10);\n\
-		c = d + cs((c + I(d, a, b) + m[14] + 0xab9423a7), 15);\n\
-		b = c + cs((b + I(c, d, a) + m[ 5] + 0xfc93a039), 21);\n\
-		a = b + cs((a + I(b, c, d) + 0x655b59c3),  6);\n\
-		d = a + cs((d + I(a, b, c) + m[ 3] + 0x8f0ccc92), 10);\n\
-		c = d + cs((c + I(d, a, b) + 0xffeff47d), 15);\n\
-		b = c + cs((b + I(c, d, a) + m[ 1] + 0x85845dd1), 21);\n\
-		a = b + cs((a + I(b, c, d) + 0x6fa87e4f),  6);\n\
-		d = a + cs((d + I(a, b, c) + m[15] + 0xfe2ce6e0), 10);\n\
-		c = d + cs((c + I(d, a, b) + m[ 6] + 0xa3014314), 15);\n\
-		b = c + cs((b + I(c, d, a) + 0x4e0811a1), 21);\n\
-		a = b + cs((a + I(b, c, d) + m[ 4] + 0xf7537e82),  6);\n\
-		d = a + cs((d + I(a, b, c) + 0xbd3af235), 10);\n\
-		c = d + cs((c + I(d, a, b) + m[ 2] + 0x2ad7d2bb), 15);\n\
-		b = B + c + cs((b + I(c, d, a) + 0xeb86d391), 21);\n\
-		\n\
-		result[0] = bswap(a+A);\n\
-		result[1] = bswap(b);\n\
-		result[2] = bswap(c+C);\n\
-		result[3] = bswap(d+D);\n\
-		if (output[0] <= result[0] && (output[0] < result[0] || (output[0] == result[0] && output[1] < result[1]) || (output[0] == result[0] && output[1] == result[1] && output[2] < result[2]) /*|| (output[0] == result[0] && output[1] == result[1] && output[2] == result[2] && output[3] < result[3])*/)) {\n\
-			output[0] = result[0];\n\
-			output[1] = result[1];\n\
-			output[2] = result[2];\n\
-			output[3] = result[3];\n\
-			for(int j = 0; j < 32; j++) {\n\
-				original[j] = input[j];\n\
+	for(int i1 = 0; i1 < 62; ++i1) {\n\
+		input[0] = basestr[i1];\n\
+		for(int i2 = 0; i2 < 62; ++i2) {\n\
+			input[1] = basestr[i2];\n\
+			for(int i3 = 0; i3 < 20; ++i3) {\n\
+				input[2] = basestr[i3];\n\
+				a = B + cs((m[ 0] + 0xd76aa477),  7);\n\
+				d = a + cs(((C ^ (a & 0x77777777)) + m[ 1] + 0xf8fa0bcc), 12);\n\
+				c = d + cs((F(d, a, B) + m[ 2] + 0xbcdb4dd9), 17);\n\
+				b = c + cs((F(c, d, a) + m[ 3] + 0xb18b7a77), 22);\n\
+				a = b + cs((a + F(b, c, d) + m[ 4] + 0xf57c0faf),  7);\n\
+				d = a + cs((d + F(a, b, c) + m[ 5] + 0x4787c62a), 12);\n\
+				c = d + cs((c + F(d, a, b) + m[ 6] + 0xa8304613), 17);\n\
+				b = c + cs((b + F(c, d, a) + 0xfd469501), 22);\n\
+				a = b + cs((a + F(b, c, d) + 0x698098d8),  7);\n\
+				d = a + cs((d + F(a, b, c) + 0x8b44f7af), 12);\n\
+				c = d + cs((c + F(d, a, b) + 0xffff5bb1), 17);\n\
+				b = c + cs((b + F(c, d, a) + 0x895cd7be), 22);\n\
+				a = b + cs((a + F(b, c, d) + 0x6b901122),  7);\n\
+				d = a + cs((d + F(a, b, c) + 0xfd987193), 12);\n\
+				c = d + cs((c + F(d, a, b) + m[14] + 0xa679438e), 17);\n\
+				b = c + cs((b + F(c, d, a) + m[15] + 0x49b40821), 22);\n\
+				\n\
+				a = b + cs((a + G(b, c, d) + m[ 1] + 0xf61e2562),  5);\n\
+				d = a + cs((d + G(a, b, c) + m[ 6] + 0xc040b340),  9);\n\
+				c = d + cs((c + G(d, a, b) + 0x265e5a51), 14);\n\
+				b = c + cs((b + G(c, d, a) + m[ 0] + 0xe9b6c7aa), 20);\n\
+				a = b + cs((a + G(b, c, d) + m[ 5] + 0xd62f105d),  5);\n\
+				d = a + cs((d + G(a, b, c) + 0x02441453),  9);\n\
+				c = d + cs((c + G(d, a, b) + m[15] + 0xd8a1e681), 14);\n\
+				b = c + cs((b + G(c, d, a) + m[ 4] + 0xe7d3fbc8), 20);\n\
+				a = b + cs((a + G(b, c, d) + 0x21e1cde6),  5);\n\
+				d = a + cs((d + G(a, b, c) + m[14] + 0xc33707d6),  9);\n\
+				c = d + cs((c + G(d, a, b) + m[ 3] + 0xf4d50d87), 14);\n\
+				b = c + cs((b + G(c, d, a) + 0x455a14ed), 20);\n\
+				a = b + cs((a + G(b, c, d) + 0xa9e3e905),  5);\n\
+				d = a + cs((d + G(a, b, c) + m[ 2] + 0xfcefa3f8),  9);\n\
+				c = d + cs((c + G(d, a, b) + 0x676f02d9), 14);\n\
+				b = c + cs((b + G(c, d, a) + 0x8d2a4c8a), 20);\n\
+				\n\
+				a = b + cs((a + H(b, c, d) + m[ 5] + 0xfffa3942),  4);\n\
+				d = a + cs((d + H(a, b, c) + 0x8771f681), 11);\n\
+				c = d + cs((c + H(d, a, b) + 0x6d9d6122), 16);\n\
+				b = c + cs((b + H(c, d, a) + m[14] + 0xfde5380c), 23);\n\
+				a = b + cs((a + H(b, c, d) + m[ 1] + 0xa4beea44),  4);\n\
+				d = a + cs((d + H(a, b, c) + m[ 4] + 0x4bdecfa9), 11);\n\
+				c = d + cs((c + H(d, a, b) + 0xf6bb4b60), 16);\n\
+				b = c + cs((b + H(c, d, a) + 0xbebfbc70), 23);\n\
+				a = b + cs((a + H(b, c, d) + 0x289b7ec6),  4);\n\
+				d = a + cs((d + H(a, b, c) + m[ 0] + 0xeaa127fa), 11);\n\
+				c = d + cs((c + H(d, a, b) + m[ 3] + 0xd4ef3085), 16);\n\
+				b = c + cs((b + H(c, d, a) + m[ 6] + 0x04881d05), 23);\n\
+				a = b + cs((a + H(b, c, d) + 0xd9d4d039),  4);\n\
+				d = a + cs((d + H(a, b, c) + 0xe6db99e5), 11);\n\
+				c = d + cs((c + H(d, a, b) + m[15] + 0x1fa27cf8), 16);\n\
+				b = c + cs((b + H(c, d, a) + m[ 2] + 0xc4ac5665), 23);\n\
+				\n\
+				a = b + cs((a + I(b, c, d) + m[ 0] + 0xf4292244),  6);\n\
+				d = a + cs((d + I(a, b, c) + 0x432aff97), 10);\n\
+				c = d + cs((c + I(d, a, b) + m[14] + 0xab9423a7), 15);\n\
+				b = c + cs((b + I(c, d, a) + m[ 5] + 0xfc93a039), 21);\n\
+				a = b + cs((a + I(b, c, d) + 0x655b59c3),  6);\n\
+				d = a + cs((d + I(a, b, c) + m[ 3] + 0x8f0ccc92), 10);\n\
+				c = d + cs((c + I(d, a, b) + 0xffeff47d), 15);\n\
+				b = c + cs((b + I(c, d, a) + m[ 1] + 0x85845dd1), 21);\n\
+				a = b + cs((a + I(b, c, d) + 0x6fa87e4f),  6);\n\
+				d = a + cs((d + I(a, b, c) + m[15] + 0xfe2ce6e0), 10);\n\
+				c = d + cs((c + I(d, a, b) + m[ 6] + 0xa3014314), 15);\n\
+				b = c + cs((b + I(c, d, a) + 0x4e0811a1), 21);\n\
+				a = b + cs((a + I(b, c, d) + m[ 4] + 0xf7537e82),  6);\n\
+				d = a + cs((d + I(a, b, c) + 0xbd3af235), 10);\n\
+				c = d + cs((c + I(d, a, b) + m[ 2] + 0x2ad7d2bb), 15);\n\
+				b = B + c + cs((b + I(c, d, a) + 0xeb86d391), 21);\n\
+				\n\
+				result[0] = bswap(a+A);\n\
+				result[1] = bswap(b);\n\
+				result[2] = bswap(c+C);\n\
+				result[3] = bswap(d+D);\n\
+				if (output[0] <= result[0] && (output[0] < result[0] || (output[0] == result[0] && output[1] < result[1]) || (output[0] == result[0] && output[1] == result[1] && output[2] < result[2]) /*|| (output[0] == result[0] && output[1] == result[1] && output[2] == result[2] && output[3] < result[3])*/)) {\n\
+					output[0] = result[0];\n\
+					output[1] = result[1];\n\
+					output[2] = result[2];\n\
+					output[3] = result[3];\n\
+					for(int j = 0; j < 32; j++) {\n\
+						original[j] = input[j];\n\
+					}\n\
+				} else if (output[4] >= result[0] && (output[4] > result[0] || (output[4] == result[0] && output[5] > result[1]) || (output[4] == result[0] && output[5] == result[1] && output[6] > result[2]) /*|| (output[4] == result[0] && output[5] == result[1] && output[6] == result[2] && output[7] > result[3])*/)) {\n\
+					output[4] = result[0];\n\
+					output[5] = result[1];\n\
+					output[6] = result[2];\n\
+					output[7] = result[3];\n\
+					for(int j = 0; j < 32; j++) {\n\
+						original[j+64] = input[j];\n\
+					}\n\
+					\n\
+				}\n\
+				poptmp = popcount(result[0]) + popcount(result[1]) + popcount(result[2]) + popcount(result[3]);\n\
+				if (poptmp > *bM) {\n\
+					bM[0] = poptmp;\n\
+					output[8] = result[0];\n\
+					output[9] = result[1];\n\
+					output[10] = result[2];\n\
+					output[11] = result[3];\n\
+					for(int j = 0; j < 32; j++) {\n\
+						original_bit[j] = input[j];\n\
+					}\n\
+				} else if (poptmp < *bm) { \n\
+					bm[0] = poptmp;\n\
+					output[12] = result[0];\n\
+					output[13] = result[1];\n\
+					output[14] = result[2];\n\
+					output[15] = result[3];\n\
+					for(int j = 0; j < 32; j++) {\n\
+						original_bit[j+64] = input[j];\n\
+					}\n\
+				}\n\
+				poptmp = result_b[0] + result_b[1] + result_b[2] + result_b[3] + result_b[4] + result_b[5] + result_b[6] + result_b[7] + result_b[8] + result_b[9] + result_b[10] + result_b[11] + result_b[12] + result_b[13] + result_b[14] + result_b[15];\n\
+				if (poptmp > *tM) {\n\
+					tM[0] = poptmp;\n\
+					output[16] = result[0];\n\
+					output[17] = result[1];\n\
+					output[18] = result[2];\n\
+					output[19] = result[3];\n\
+					for(int j = 0; j < 32; j++) {\n\
+						original[j+128] = input[j];\n\
+					}\n\
+				} else if (poptmp < *tm) { \n\
+					tm[0] = poptmp;\n\
+					output[20] = result[0];\n\
+					output[21] = result[1];\n\
+					output[22] = result[2];\n\
+					output[23] = result[3];\n\
+					for(int j = 0; j < 32; j++) {\n\
+						original[j+192] = input[j];\n\
+					}\n\
+				}\n\
+				poptmp = popcount(result[0] ^ 0x01234567) + popcount(result[1] ^ 0x89abcdef) + popcount(result[2] ^ 0xfedcba98) + popcount(result[3] ^ 0x76543210);\n\
+				if (poptmp < *base) {\n\
+					base[0] = poptmp;\n\
+					output[24] = result[0];\n\
+					output[25] = result[1];\n\
+					output[26] = result[2];\n\
+					output[27] = result[3];\n\
+					for(int j = 0; j < 32; j++) {\n\
+						original[j+256] = input[j];\n\
+					}\n\
+				}\n\
 			}\n\
-		} else if (output[4] >= result[0] && (output[4] > result[0] || (output[4] == result[0] && output[5] > result[1]) || (output[4] == result[0] && output[5] == result[1] && output[6] > result[2]) /*|| (output[4] == result[0] && output[5] == result[1] && output[6] == result[2] && output[7] > result[3])*/)) {\n\
-			output[4] = result[0];\n\
-			output[5] = result[1];\n\
-			output[6] = result[2];\n\
-			output[7] = result[3];\n\
-			for(int j = 0; j < 32; j++) {\n\
-				original[j+64] = input[j];\n\
-			}\n\
-			\n\
 		}\n\
-		poptmp = popcount(result[0]) + popcount(result[1]) + popcount(result[2]) + popcount(result[3]);\n\
-		if (poptmp > *bM) {\n\
-			bM[0] = poptmp;\n\
-			output[8] = result[0];\n\
-			output[9] = result[1];\n\
-			output[10] = result[2];\n\
-			output[11] = result[3];\n\
-			for(int j = 0; j < 32; j++) {\n\
-				original_bit[j] = input[j];\n\
-			}\n\
-		} else if (poptmp < *bm) { \n\
-			bm[0] = poptmp;\n\
-			output[12] = result[0];\n\
-			output[13] = result[1];\n\
-			output[14] = result[2];\n\
-			output[15] = result[3];\n\
-			for(int j = 0; j < 32; j++) {\n\
-				original_bit[j+64] = input[j];\n\
-			}\n\
-		}\n\
-		poptmp = result_b[0] + result_b[1] + result_b[2] + result_b[3] + result_b[4] + result_b[5] + result_b[6] + result_b[7] + result_b[8] + result_b[9] + result_b[10] + result_b[11] + result_b[12] + result_b[13] + result_b[14] + result_b[15];\n\
-		if (poptmp > *tM) {\n\
-			tM[0] = poptmp;\n\
-			output[16] = result[0];\n\
-			output[17] = result[1];\n\
-			output[18] = result[2];\n\
-			output[19] = result[3];\n\
-			for(int j = 0; j < 32; j++) {\n\
-				original[j+128] = input[j];\n\
-			}\n\
-		} else if (poptmp < *tm) { \n\
-			tm[0] = poptmp;\n\
-			output[20] = result[0];\n\
-			output[21] = result[1];\n\
-			output[22] = result[2];\n\
-			output[23] = result[3];\n\
-			for(int j = 0; j < 32; j++) {\n\
-				original[j+192] = input[j];\n\
-			}\n\
-		}\n\
-		poptmp = popcount(result[0] ^ 0x01234567) + popcount(result[1] ^ 0x89abcdef) + popcount(result[2] ^ 0xfedcba98) + popcount(result[3] ^ 0x76543210);\n\
-		if (poptmp < *base) {\n\
-			base[0] = poptmp;\n\
-			output[24] = result[0];\n\
-			output[25] = result[1];\n\
-			output[26] = result[2];\n\
-			output[27] = result[3];\n\
-			for(int j = 0; j < 32; j++) {\n\
-				original[j+256] = input[j];\n\
-			}\n\
-		}\n\
-		next_permutation(input, input+length);\n\
 	}\n\
 	for (int i = 0; i < 16; i++) {\n\
 		m_global[i] = m[i];\n\
@@ -249,17 +223,22 @@ int main(int argc, char *argv[]) {
 	int bM_all = 0, bm_all = 512;
 	int tM_all = 0, tm_all = 4096;
 	int base_all = 512;
+	int strcnt[64];
 
 	for(int i = 0; i < 8; i++) {
 		result[i] = 0x7FFFFFFF;
 	}
 
+	for(int i = 0; i < 64; i++) {
+		strcnt[i] = 0;
+	}
+
 	for(int j = 0; j < num_global*num_local; j++) {
-		input[64*j+0] = basestr[j / 93 / 93];
-		input[64*j+1] = basestr[(j / 93) % 93];
-		input[64*j+2] = basestr[j % 93];
+		input[64*j+3] = basestr[j / 93 / 93];
+		input[64*j+4] = basestr[(j / 93) % 93];
+		input[64*j+5] = basestr[j % 93];
 		for(int i = 0; i < len; i++) {
-			input[3+i + 64*j] = argv[1][i];
+			input[6+i + 64*j] = argv[1][i];
 		}
 		input[len + 64*j] = '-';
 		input[len+1 + 64*j] = 'H';
@@ -433,6 +412,20 @@ int main(int argc, char *argv[]) {
 			exit(1);
 		}
 		fflush(OUT);
+		strcnt[9]++;
+		for (int i = 9; i < len; i++) {
+			if (strcnt[i] > 92) {	
+				strcnt[i] = 0;
+				strcnt[i+1]++;
+			} else {
+				break;
+			}
+		}
+		for(int i = 0; i < num_global * num_local; i++) {
+			for(int j = 9; j < len; j++) {
+				input[i*64+j] = basestr[strcnt[j]];
+			}
+		}
 		for(int j = 0; j < num_global * num_local; j++) {
 			if (output[j*28 + 0] > result[0] || (output[j*28 + 0] == result[0] && output[j*28 + 1] > result[1]) || (output[j*28 + 0] == result[0] && output[j*28 + 1] == result[1] && output[j*28 + 2] > result[2])) {
 				result[0] = output[j*28 + 0];
