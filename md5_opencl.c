@@ -37,10 +37,11 @@ const char *OpenCL_kernel = "\n\
 #define C 0x98badcfe\n\
 #define D 0x10325476\n\
 \n\
+#define basestr \"01234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\"\n\
+\n\
 __kernel void run(__global unsigned int *m_global, __global unsigned int *output, __global unsigned char *original, __global unsigned char *original_bit, __global int *bM, __global int *bm, __global int *tM, __global int *tm, __global int *base, int length) {\n\
 	unsigned int a, b, c, d;\n\
 	unsigned int result[4];\n\
-	unsigned char *basestr = (unsigned char*)\"01234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\";\n\
 	int poptmp;\n\
 	\n\
 	m_global += get_global_id(0)*16;\n\
