@@ -221,7 +221,7 @@ int main(int argc, char *argv[]) {
 	unsigned char *original_bit = (unsigned char*)malloc(sizeof(char)*128*num_global*num_local);
 	unsigned int *output = (unsigned int*)malloc(sizeof(int)*28*num_global*num_local);
 	len = strlen(argv[1]) + 3;
-	unsigned char *basestr = (unsigned char*)"01234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()-=_+[]{};':\",./<>?|\\";
+	unsigned char *basestr = (unsigned char*)"01234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()-=_+[]{};':\",./<>?|";
 	int *bM = (int*)malloc(sizeof(int)*num_global*num_local);
 	int *bm = (int*)malloc(sizeof(int)*num_global*num_local);
 	int *tM = (int*)malloc(sizeof(int)*num_global*num_local);
@@ -241,9 +241,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	for(int j = 0; j < num_global*num_local; j++) {
-		input[64*j+3] = basestr[j / 93 / 93];
-		input[64*j+4] = basestr[(j / 93) % 93];
-		input[64*j+5] = basestr[j % 93];
+		input[64*j+3] = basestr[j / 92 / 92];
+		input[64*j+4] = basestr[(j / 92) % 92];
+		input[64*j+5] = basestr[j % 92];
 		for(int i = 0; i < len; i++) {
 			input[6+i + 64*j] = argv[1][i];
 		}
@@ -428,7 +428,7 @@ int main(int argc, char *argv[]) {
 		}
 		clFinish(commands);
 		err |= clEnqueueReadBuffer(commands, input_m, CL_TRUE, 0, sizeof(char)*64*num_global*num_local, input, 0, NULL, NULL);
-		err = clEnqueueReadBuffer(commands, output_m, CL_TRUE, 0, sizeof(int)*28*num_global*num_local, output, 0, NULL, NULL);
+		err |= clEnqueueReadBuffer(commands, output_m, CL_TRUE, 0, sizeof(int)*28*num_global*num_local, output, 0, NULL, NULL);
 		err |= clEnqueueReadBuffer(commands, original_m, CL_TRUE, 0, sizeof(char)*320*num_global*num_local, original, 0, NULL, NULL);
 		err |= clEnqueueReadBuffer(commands, original_m_bit, CL_TRUE, 0, sizeof(char)*128*num_global*num_local, original_bit, 0, NULL, NULL);
 		err |= clEnqueueReadBuffer(commands, bM_m, CL_TRUE, 0, sizeof(int)*num_global*num_local, bM, 0, NULL, NULL);
@@ -443,7 +443,7 @@ int main(int argc, char *argv[]) {
 		fflush(OUT);
 		strcnt[9]++;
 		for (int i = 9; i < len; i++) {
-			if (strcnt[i] > 92) {	
+			if (strcnt[i] > 91) {	
 				strcnt[i] = 0;
 				strcnt[i+1]++;
 			} else {
