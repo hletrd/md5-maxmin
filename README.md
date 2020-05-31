@@ -2,7 +2,8 @@
 
 * Based on C + OpenCL/CUDA
 * Now holding records for MD5 extreme values.
-  * Maybe as 2019?
+  * Maybe as <s>2019?</s> 2020?
+  * Current records: [https://beneri.se/hashgame/](https://beneri.se/hashgame/)
   
 ## Records
 * Max
